@@ -10,18 +10,15 @@ namespace DYNAMIC_AI.Agent.Core.Services;
 
 public class GeminiService : IGeminiService
 {
-    private readonly ILocalSettingsService _localSettingsService;
     private readonly HttpClient _httpClient;
 
-    public GeminiService(ILocalSettingsService localSettingsService)
+    public GeminiService()
     {
-        _localSettingsService = localSettingsService;
         _httpClient = new HttpClient();
     }
 
-    public async Task<string> GetChatResponseAsync(string prompt)
+    public async Task<string> GetChatResponseAsync(string prompt, GeminiSettings settings)
     {
-        var settings = await _localSettingsService.ReadSettingAsync<GeminiSettings>("GeminiSettings");
         if (settings == null || string.IsNullOrEmpty(settings.ApiKey) || string.IsNullOrEmpty(settings.Model))
         {
             return "API Key or Model not set. Please configure them in the settings page.";

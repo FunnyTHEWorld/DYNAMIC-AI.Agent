@@ -51,6 +51,20 @@
                 </StackPanel>
             </StackPanel>
 
+            <TextBlock Text="Gemini API Settings" Style="{ThemeResource SubtitleTextBlockStyle}" />
+            <StackPanel Margin="{StaticResource SmallTopBottomMargin}">
+                <TextBlock Text="API Key" />
+                <TextBox Text="{x:Bind ViewModel.GeminiApiKey, Mode=TwoWay}" Margin="{StaticResource XSmallTopMargin}" />
+
+                <TextBlock Text="Base URL" Margin="{StaticResource SmallTopMargin}" />
+                <TextBox Text="{x:Bind ViewModel.GeminiBaseUrl, Mode=TwoWay}" Margin="{StaticResource XSmallTopMargin}" />
+
+                <TextBlock Text="Model" Margin="{StaticResource SmallTopMargin}" />
+                <ComboBox ItemsSource="{x:Bind ViewModel.GeminiModels}" SelectedItem="{x:Bind ViewModel.GeminiModel, Mode=TwoWay}" Margin="{StaticResource XSmallTopMargin}" />
+
+                <Button Content="Save" Command="{x:Bind ViewModel.SaveGeminiSettingsCommand}" Margin="{StaticResource SmallTopMargin}" />
+            </StackPanel>
+
             <TextBlock x:Uid="Settings_About" Style="{ThemeResource SubtitleTextBlockStyle}" />
 
             <StackPanel Margin="{StaticResource XSmallTopMargin}">

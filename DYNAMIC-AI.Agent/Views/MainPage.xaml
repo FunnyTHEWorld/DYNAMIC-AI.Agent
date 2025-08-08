@@ -10,6 +10,7 @@
         <DataTemplate x:Key="UserMessageTemplate">
             <Grid HorizontalAlignment="Right" Margin="5">
                 <StackPanel>
+                    <Image Source="{Binding AttachmentThumbnail}" MaxWidth="200" Margin="0,0,0,5" HorizontalAlignment="Right" Visibility="{Binding AttachmentThumbnail, TargetNullValue=Collapsed}" />
                     <TextBlock Text="{Binding Content}" TextWrapping="Wrap" HorizontalAlignment="Right" />
                     <TextBlock Text="{Binding Timestamp}" FontSize="10" HorizontalAlignment="Right" />
                 </StackPanel>
@@ -63,10 +64,23 @@
                          Text="{x:Bind ViewModel.UserInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          PlaceholderText="Type your message here..."
                          VerticalAlignment="Center" />
-                <Button Grid.Column="1"
-                        Content="Send"
-                        Command="{x:Bind ViewModel.SendMessageCommand}"
-                        Margin="10,0,0,0" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Command="{x:Bind ViewModel.AttachFileCommand}" Margin="10,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <SymbolIcon Symbol="Attach" />
+                            <TextBlock Text="Attach" Margin="5,0,0,0" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{x:Bind ViewModel.ScreenshotCommand}" Margin="10,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <SymbolIcon Symbol="Camera" />
+                            <TextBlock Text="Screenshot" Margin="5,0,0,0" />
+                        </StackPanel>
+                    </Button>
+                    <Button Content="Send"
+                            Command="{x:Bind ViewModel.SendMessageCommand}"
+                            Margin="10,0,0,0" />
+                </StackPanel>
             </Grid>
         </Grid>
 

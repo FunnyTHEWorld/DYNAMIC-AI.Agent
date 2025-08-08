@@ -5,5 +5,5 @@ namespace DYNAMIC_AI.Agent.Core.Contracts.Services;
 
 public interface IGeminiService
 {
-    Task<string> GetChatResponseAsync(string prompt, GeminiSettings settings);
+    Task<string> GetChatResponseAsync(string prompt, string? attachmentPath, GeminiSettings settings);
 }

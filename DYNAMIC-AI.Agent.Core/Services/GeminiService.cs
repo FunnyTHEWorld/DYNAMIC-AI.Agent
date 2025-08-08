@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -17,7 +19,7 @@ public class GeminiService : IGeminiService
         _httpClient = new HttpClient();
     }
 
-    public async Task<string> GetChatResponseAsync(string prompt, GeminiSettings settings)
+    public async Task<string> GetChatResponseAsync(string prompt, string? attachmentPath, GeminiSettings settings)
     {
         if (settings == null || string.IsNullOrEmpty(settings.ApiKey) || string.IsNullOrEmpty(settings.Model))
         {
@@ -27,17 +29,37 @@ public class GeminiService : IGeminiService
         var baseUrl = settings.BaseUrl ?? "https://generativelanguage.googleapis.com";
         var url = $"{baseUrl}/v1beta/models/{settings.Model}:generateContent?key={settings.ApiKey}";
 
+        var parts = new List<object> { new { text = prompt } };
+
+        if (!string.IsNullOrEmpty(attachmentPath))
+        {
+            try
+            {
+                var fileBytes = await File.ReadAllBytesAsync(attachmentPath);
+                var base64String = Convert.ToBase64String(fileBytes);
+                var mimeType = GetMimeType(attachmentPath);
+
+                parts.Add(new
+                {
+                    inline_data = new
+                    {
+                        mime_type = mimeType,
+                        data = base64String
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                // Handle file read errors
+                return $"Error processing attachment: {ex.Message}";
+            }
+        }
+
         var requestBody = new
         {
             contents = new[]
             {
-                new
-                {
-                    parts = new[]
-                    {
-                        new { text = prompt }
-                    }
-                }
+                new { parts = parts.ToArray() }
             }
         };
 
@@ -51,23 +73,34 @@ public class GeminiService : IGeminiService
 
             var responseJson = await response.Content.ReadAsStringAsync();
 
-            // Basic parsing, a more robust solution would use a proper JSON parsing library with models
             using (JsonDocument doc = JsonDocument.Parse(responseJson))
             {
                 JsonElement root = doc.RootElement;
                 JsonElement candidates = root.GetProperty("candidates");
                 JsonElement firstCandidate = candidates[0];
                 JsonElement contentElement = firstCandidate.GetProperty("content");
-                JsonElement parts = contentElement.GetProperty("parts");
-                JsonElement firstPart = parts[0];
+                JsonElement partsElement = contentElement.GetProperty("parts");
+                JsonElement firstPart = partsElement[0];
                 JsonElement text = firstPart.GetProperty("text");
                 return text.GetString() ?? "No response from API.";
             }
         }
         catch (Exception ex)
         {
-            // Log the exception
             return $"Error calling Gemini API: {ex.Message}";
         }
+    }
+
+    private string GetMimeType(string filePath)
+    {
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+        return extension switch
+        {
+            ".jpg" => "image/jpeg",
+            ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            _ => "application/octet-stream",// Default MIME type
+        };
     }
 }

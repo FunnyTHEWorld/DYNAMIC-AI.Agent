@@ -35,7 +35,7 @@ public partial class SettingsViewModel : ObservableRecipient
     [ObservableProperty]
     private string? _geminiModel;
 
-    public ObservableCollection<string> GeminiModels { get; } = new ObservableCollection<string> { "gemini-pro", "gemini-pro-vision" };
+    public ObservableCollection<string> GeminiModels { get; } = new ObservableCollection<string> { "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite" };
 
     public ICommand SwitchThemeCommand
     {

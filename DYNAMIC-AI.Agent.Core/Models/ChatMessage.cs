@@ -1,5 +1,3 @@
-using Microsoft.UI.Xaml.Media.Imaging;
-
 namespace DYNAMIC_AI.Agent.Core.Models;
 
 public enum SenderType
@@ -23,10 +21,6 @@ public class ChatMessage
         get; set;
     }
     public string? AttachmentPath
-    {
-        get; set;
-    }
-    public BitmapImage? AttachmentThumbnail
     {
         get; set;
     }

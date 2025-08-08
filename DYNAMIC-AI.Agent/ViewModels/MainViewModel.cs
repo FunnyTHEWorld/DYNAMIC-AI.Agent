@@ -22,7 +22,7 @@ public partial class MainViewModel : ObservableRecipient
     private readonly IGeminiService _geminiService;
     private readonly ILocalSettingsService _localSettingsService;
 
-    public ObservableCollection<ChatMessage> ChatMessages { get; } = new ObservableCollection<ChatMessage>();
+    public ObservableCollection<ChatMessageViewModel> ChatMessages { get; } = new ObservableCollection<ChatMessageViewModel>();
 
     [ObservableProperty]
     private string? _userInput;
@@ -154,9 +154,12 @@ public partial class MainViewModel : ObservableRecipient
             Sender = SenderType.User,
             Timestamp = System.DateTime.Now,
             AttachmentPath = AttachmentPath,
-            AttachmentThumbnail = AttachmentThumbnail,
         };
-        ChatMessages.Add(userMessage);
+        var userMessageViewModel = new ChatMessageViewModel(userMessage)
+        {
+            AttachmentThumbnail = AttachmentThumbnail
+        };
+        ChatMessages.Add(userMessageViewModel);
 
         var prompt = UserInput;
         var attachmentPath = AttachmentPath;
@@ -175,7 +178,7 @@ public partial class MainViewModel : ObservableRecipient
                 Sender = SenderType.AI,
                 Timestamp = System.DateTime.Now
             };
-            ChatMessages.Add(errorMessage);
+            ChatMessages.Add(new ChatMessageViewModel(errorMessage));
             return;
         }
 
@@ -187,6 +190,6 @@ public partial class MainViewModel : ObservableRecipient
             Sender = SenderType.AI,
             Timestamp = System.DateTime.Now
         };
-        ChatMessages.Add(aiMessage);
+        ChatMessages.Add(new ChatMessageViewModel(aiMessage));
     }
 }

@@ -5,18 +5,14 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:helpers="using:DYNAMIC_AI.Agent.Helpers"
-    xmlns:converters="using:DYNAMIC_AI.Agent.Helpers"
-    xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
     mc:Ignorable="d">
     <Page.Resources>
-        <converters:BoolToLineConverter x:Key="BoolToLineConverter" />
-        <converters:NotNullToVisibilityConverter x:Key="NotNullToVisibilityConverter" />
         <DataTemplate x:Key="UserMessageTemplate">
             <Grid HorizontalAlignment="Right" Margin="5">
                 <StackPanel>
+                    <Image Source="{Binding AttachmentThumbnail}" MaxWidth="200" Margin="0,0,0,5" HorizontalAlignment="Right" Visibility="{Binding AttachmentThumbnail, TargetNullValue=Collapsed}" />
                     <TextBlock Text="{Binding Content}" TextWrapping="Wrap" HorizontalAlignment="Right" />
                     <TextBlock Text="{Binding Timestamp}" FontSize="10" HorizontalAlignment="Right" />
-                    <TextBlock Text="{Binding PromptTokenCount, StringFormat='Input Tokens: {0}'}" FontSize="10" HorizontalAlignment="Right" />
                 </StackPanel>
             </Grid>
         </DataTemplate>
@@ -24,20 +20,8 @@
         <DataTemplate x:Key="AiMessageTemplate">
             <Grid HorizontalAlignment="Left" Margin="5">
                 <StackPanel>
-                    <Border Background="LightGray" CornerRadius="5" Padding="5" Margin="0,0,0,5">
-                        <StackPanel>
-                            <TextBlock Text="Thinking..." FontWeight="Bold" />
-                            <TextBlock Text="{Binding ThinkingContent}"
-                                       MaxLines="{Binding IsThinkingExpanded, Converter={StaticResource BoolToLineConverter}}"
-                                       TextTrimming="CharacterEllipsis" />
-                            <ToggleButton Content="Expand"
-                                          IsChecked="{Binding IsThinkingExpanded, Mode=TwoWay}"
-                                          Visibility="{Binding ThinkingContent, Converter={StaticResource NotNullToVisibilityConverter}}" />
-                        </StackPanel>
-                    </Border>
-                    <controls:MarkdownTextBlock Text="{Binding MarkdownContent}" TextWrapping="Wrap" HorizontalAlignment="Left" ImageResolving="OnImageResolving" />
+                    <TextBlock Text="{Binding Content}" TextWrapping="Wrap" HorizontalAlignment="Left" />
                     <TextBlock Text="{Binding Timestamp}" FontSize="10" HorizontalAlignment="Left" />
-                    <TextBlock Text="{Binding CandidatesTokenCount, StringFormat='Output Tokens: {0}'}" FontSize="10" HorizontalAlignment="Left" />
                 </StackPanel>
             </Grid>
         </DataTemplate>
@@ -75,17 +59,28 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBox Grid.Column="0"
                          Text="{x:Bind ViewModel.UserInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          PlaceholderText="Type your message here..."
                          VerticalAlignment="Center" />
-                <ProgressRing Grid.Column="1" IsActive="{x:Bind ViewModel.IsThinking, Mode=OneWay}" Margin="10,0,0,0" />
-                <Button Grid.Column="2"
-                        Content="Send"
-                        Command="{x:Bind ViewModel.SendMessageCommand}"
-                        Margin="10,0,0,0" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Command="{x:Bind ViewModel.AttachFileCommand}" Margin="10,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <SymbolIcon Symbol="Attach" />
+                            <TextBlock Text="Attach" Margin="5,0,0,0" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{x:Bind ViewModel.ScreenshotCommand}" Margin="10,0,0,0">
+                        <StackPanel Orientation="Horizontal">
+                            <SymbolIcon Symbol="Camera" />
+                            <TextBlock Text="Screenshot" Margin="5,0,0,0" />
+                        </StackPanel>
+                    </Button>
+                    <Button Content="Send"
+                            Command="{x:Bind ViewModel.SendMessageCommand}"
+                            Margin="10,0,0,0" />
+                </StackPanel>
             </Grid>
         </Grid>
 
@@ -98,8 +93,6 @@
             <TextBlock Text="Top-P" Margin="0,20,0,0" />
             <Slider Minimum="0" Maximum="1" StepFrequency="0.1" Value="{x:Bind ViewModel.TopP, Mode=TwoWay}" />
             <TextBlock Text="{x:Bind ViewModel.TopP, Mode=OneWay}" HorizontalAlignment="Center" />
-
-            <ToggleSwitch Header="Thinking" IsOn="{x:Bind ViewModel.IsStreamingEnabled, Mode=TwoWay}" Margin="0,20,0,0" />
         </StackPanel>
     </Grid>
 </Page>

@@ -1,10 +1,19 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using DYNAMIC_AI.Agent.Contracts.Services;
 using DYNAMIC_AI.Agent.Core.Contracts.Services;
 using DYNAMIC_AI.Agent.Core.Models;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Storage;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
+using Windows.Graphics.Capture;
+using Windows.Graphics.Imaging;
+using Windows.Graphics.DirectX;
+using Windows.Graphics.DirectX.Direct3D11;
 
 namespace DYNAMIC_AI.Agent.ViewModels;
 
@@ -25,10 +34,10 @@ public partial class MainViewModel : ObservableRecipient
     private double _topP = 0.9;
 
     [ObservableProperty]
-    private bool _isThinking;
+    private string? _attachmentPath;
 
     [ObservableProperty]
-    private bool _isStreamingEnabled;
+    private BitmapImage? _attachmentThumbnail;
 
     public MainViewModel(IGeminiService geminiService, ILocalSettingsService localSettingsService)
     {
@@ -37,9 +46,104 @@ public partial class MainViewModel : ObservableRecipient
     }
 
     [RelayCommand]
+    private async Task AttachFile()
+    {
+        var filePicker = new FileOpenPicker();
+        var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+        InitializeWithWindow.Initialize(filePicker, hwnd);
+        filePicker.ViewMode = PickerViewMode.Thumbnail;
+        filePicker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+        filePicker.FileTypeFilter.Add(".jpg");
+        filePicker.FileTypeFilter.Add(".jpeg");
+        filePicker.FileTypeFilter.Add(".png");
+
+        var file = await filePicker.PickSingleFileAsync();
+        if (file != null)
+        {
+            AttachmentPath = file.Path;
+            var thumbnail = new BitmapImage();
+            using (var stream = await file.OpenAsync(FileAccessMode.Read))
+            {
+                await thumbnail.SetSourceAsync(stream);
+            }
+            AttachmentThumbnail = thumbnail;
+        }
+    }
+
+    [RelayCommand]
+    private async Task Screenshot()
+    {
+        var picker = new GraphicsCapturePicker();
+        var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+        InitializeWithWindow.Initialize(picker, hwnd);
+        GraphicsCaptureItem item = await picker.PickSingleItemAsync();
+
+        if (item != null)
+        {
+            var device = Helpers.DirectXHelper.CreateDevice();
+            var framePool = Direct3D11CaptureFramePool.Create(
+                device,
+                DirectXPixelFormat.B8G8R8A8UIntNormalized,
+                2,
+                item.Size);
+
+            var session = framePool.CreateCaptureSession(item);
+            var tcs = new TaskCompletionSource<SoftwareBitmap>();
+
+            framePool.FrameArrived += async (s, a) =>
+            {
+                using (var frame = s.TryGetNextFrame())
+                {
+                    if (frame != null)
+                    {
+                        try
+                        {
+                            var softwareBitmap = await SoftwareBitmap.CreateCopyFromSurfaceAsync(frame.Surface);
+                            tcs.TrySetResult(softwareBitmap);
+                        }
+                        catch (Exception ex)
+                        {
+                            tcs.TrySetException(ex);
+                        }
+                        finally
+                        {
+                            session.Dispose();
+                            framePool.Dispose();
+                        }
+                    }
+                }
+            };
+
+            session.StartCapture();
+            var capturedBitmap = await tcs.Task;
+
+            if (capturedBitmap != null)
+            {
+                var folder = ApplicationData.Current.TemporaryFolder;
+                var file = await folder.CreateFileAsync("screenshot.png", CreationCollisionOption.GenerateUniqueName);
+
+                using (var stream = await file.OpenAsync(FileAccessMode.ReadWrite))
+                {
+                    BitmapEncoder encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, stream);
+                    encoder.SetSoftwareBitmap(capturedBitmap);
+                    await encoder.FlushAsync();
+                }
+
+                AttachmentPath = file.Path;
+                var thumbnail = new BitmapImage();
+                using (var stream = await file.OpenAsync(FileAccessMode.Read))
+                {
+                    await thumbnail.SetSourceAsync(stream);
+                }
+                AttachmentThumbnail = thumbnail;
+            }
+        }
+    }
+
+    [RelayCommand]
     private async Task SendMessage()
     {
-        if (string.IsNullOrWhiteSpace(UserInput))
+        if (string.IsNullOrWhiteSpace(UserInput) && string.IsNullOrWhiteSpace(AttachmentPath))
         {
             return;
         }
@@ -48,14 +152,18 @@ public partial class MainViewModel : ObservableRecipient
         {
             Content = UserInput,
             Sender = SenderType.User,
-            Timestamp = System.DateTime.Now
+            Timestamp = System.DateTime.Now,
+            AttachmentPath = AttachmentPath,
+            AttachmentThumbnail = AttachmentThumbnail,
         };
         ChatMessages.Add(userMessage);
 
         var prompt = UserInput;
-        UserInput = string.Empty;
+        var attachmentPath = AttachmentPath;
 
-        IsThinking = true;
+        UserInput = string.Empty;
+        AttachmentPath = null;
+        AttachmentThumbnail = null;
 
         var settings = await _localSettingsService.ReadSettingAsync<GeminiSettings>("GeminiSettings");
         if (settings == null)
@@ -68,86 +176,17 @@ public partial class MainViewModel : ObservableRecipient
                 Timestamp = System.DateTime.Now
             };
             ChatMessages.Add(errorMessage);
-            IsThinking = false;
             return;
         }
 
-        if (IsStreamingEnabled)
+        var response = await _geminiService.GetChatResponseAsync(prompt, attachmentPath, settings);
+
+        var aiMessage = new ChatMessage
         {
-            var aiMessage = new ChatMessage
-            {
-                Sender = SenderType.AI,
-                Timestamp = System.DateTime.Now,
-            };
-            ChatMessages.Add(aiMessage);
-
-            var fullResponse = new StringBuilder();
-            var fullThinkingResponse = new StringBuilder();
-            await foreach (var response in _geminiService.GetChatResponseStreamAsync(prompt, settings))
-            {
-                fullResponse.Append(response.Content);
-                if (response.ThinkingContent != null)
-                {
-                    fullThinkingResponse.Append(response.ThinkingContent);
-                    aiMessage.ThinkingContent = fullThinkingResponse.ToString();
-                }
-                aiMessage.Content = fullResponse.ToString();
-
-                var renderedContent = LatexRenderer.Render(aiMessage.Content);
-                var markdownContent = new StringBuilder();
-                var imageIndex = 0;
-                foreach (var content in renderedContent)
-                {
-                    if (content is TextContent textContent)
-                    {
-                        markdownContent.Append(textContent.Text);
-                    }
-                    else if (content is LatexImageContent)
-                    {
-                        markdownContent.Append($"![latex_{imageIndex++}](latex:{imageIndex})");
-                    }
-                }
-                aiMessage.MarkdownContent = markdownContent.ToString();
-                aiMessage.RenderedContent = renderedContent;
-
-                aiMessage.PromptTokenCount = response.PromptTokenCount;
-                aiMessage.CandidatesTokenCount = response.CandidatesTokenCount;
-            }
-        }
-        else
-        {
-            var response = await _geminiService.GetChatResponseAsync(prompt, settings);
-
-            userMessage.PromptTokenCount = response.PromptTokenCount;
-
-            var renderedContent = LatexRenderer.Render(response.Content);
-            var markdownContent = new StringBuilder();
-            var imageIndex = 0;
-            foreach (var content in renderedContent)
-            {
-                if (content is TextContent textContent)
-                {
-                    markdownContent.Append(textContent.Text);
-                }
-                else if (content is LatexImageContent)
-                {
-                    markdownContent.Append($"![latex_{imageIndex++}](latex:{imageIndex})");
-                }
-            }
-
-            var aiMessage = new ChatMessage
-            {
-                Content = response.Content,
-                MarkdownContent = markdownContent.ToString(),
-                RenderedContent = renderedContent,
-                ThinkingContent = response.ThinkingContent,
-                Sender = SenderType.AI,
-                Timestamp = System.DateTime.Now,
-                CandidatesTokenCount = response.CandidatesTokenCount
-            };
-            ChatMessages.Add(aiMessage);
-        }
-
-        IsThinking = false;
+            Content = response,
+            Sender = SenderType.AI,
+            Timestamp = System.DateTime.Now
+        };
+        ChatMessages.Add(aiMessage);
     }
 }

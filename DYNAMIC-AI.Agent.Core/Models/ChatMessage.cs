@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace DYNAMIC_AI.Agent.Core.Models;
 
@@ -8,35 +8,26 @@ public enum SenderType
     AI
 }
 
-using System.Collections.Generic;
-using DYNAMIC_AI.Agent.Helpers;
-
-public partial class ChatMessage : ObservableObject
+public class ChatMessage
 {
-    [ObservableProperty]
-    private string? _content;
-
-    [ObservableProperty]
-    private string? _markdownContent;
-
-    [ObservableProperty]
-    private List<RenderedContent> _renderedContent;
-
-    [ObservableProperty]
-    private string? _thinkingContent;
-
-    [ObservableProperty]
-    private SenderType _sender;
-
-    [ObservableProperty]
-    private DateTime _timestamp;
-
-    [ObservableProperty]
-    private int _promptTokenCount;
-
-    [ObservableProperty]
-    private int _candidatesTokenCount;
-
-    [ObservableProperty]
-    private bool _isThinkingExpanded;
+    public string? Content
+    {
+        get; set;
+    }
+    public SenderType Sender
+    {
+        get; set;
+    }
+    public DateTime Timestamp
+    {
+        get; set;
+    }
+    public string? AttachmentPath
+    {
+        get; set;
+    }
+    public BitmapImage? AttachmentThumbnail
+    {
+        get; set;
+    }
 }

@@ -1,16 +1,8 @@
 namespace DYNAMIC_AI.Agent.Core.Models;
 
-public enum SenderType
-{
-    User,
-    AI
-}
-
-public class ChatMessage
+public class ChatResponse
 {
     public string? Content { get; set; }
-    public SenderType Sender { get; set; }
-    public DateTime Timestamp { get; set; }
     public int PromptTokenCount { get; set; }
     public int CandidatesTokenCount { get; set; }
 }

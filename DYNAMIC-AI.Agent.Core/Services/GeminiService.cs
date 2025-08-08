@@ -17,11 +17,11 @@ public class GeminiService : IGeminiService
         _httpClient = new HttpClient();
     }
 
-    public async Task<string> GetChatResponseAsync(string prompt, GeminiSettings settings)
+    public async Task<ChatResponse> GetChatResponseAsync(string prompt, GeminiSettings settings)
     {
         if (settings == null || string.IsNullOrEmpty(settings.ApiKey) || string.IsNullOrEmpty(settings.Model))
         {
-            return "API Key or Model not set. Please configure them in the settings page.";
+            return new ChatResponse { Content = "API Key or Model not set. Please configure them in the settings page." };
         }
 
         var baseUrl = settings.BaseUrl ?? "https://generativelanguage.googleapis.com";
@@ -51,7 +51,6 @@ public class GeminiService : IGeminiService
 
             var responseJson = await response.Content.ReadAsStringAsync();
 
-            // Basic parsing, a more robust solution would use a proper JSON parsing library with models
             using (JsonDocument doc = JsonDocument.Parse(responseJson))
             {
                 JsonElement root = doc.RootElement;
@@ -61,13 +60,34 @@ public class GeminiService : IGeminiService
                 JsonElement parts = contentElement.GetProperty("parts");
                 JsonElement firstPart = parts[0];
                 JsonElement text = firstPart.GetProperty("text");
-                return text.GetString() ?? "No response from API.";
+                var responseContent = text.GetString() ?? "No response from API.";
+
+                var promptTokenCount = 0;
+                var candidatesTokenCount = 0;
+                if (root.TryGetProperty("usageMetadata", out var usageMetadata))
+                {
+                    if (usageMetadata.TryGetProperty("promptTokenCount", out var promptTokenCountElement))
+                    {
+                        promptTokenCount = promptTokenCountElement.GetInt32();
+                    }
+                    if (usageMetadata.TryGetProperty("candidatesTokenCount", out var candidatesTokenCountElement))
+                    {
+                        candidatesTokenCount = candidatesTokenCountElement.GetInt32();
+                    }
+                }
+
+                return new ChatResponse
+                {
+                    Content = responseContent,
+                    PromptTokenCount = promptTokenCount,
+                    CandidatesTokenCount = candidatesTokenCount
+                };
             }
         }
         catch (Exception ex)
         {
             // Log the exception
-            return $"Error calling Gemini API: {ex.Message}";
+            return new ChatResponse { Content = $"Error calling Gemini API: {ex.Message}" };
         }
     }
 }

@@ -24,6 +24,12 @@ public partial class MainViewModel : ObservableRecipient
     [ObservableProperty]
     private double _topP = 0.9;
 
+    [ObservableProperty]
+    private bool _isThinking;
+
+    [ObservableProperty]
+    private bool _isStreamingEnabled;
+
     public MainViewModel(IGeminiService geminiService, ILocalSettingsService localSettingsService)
     {
         _geminiService = geminiService;
@@ -49,6 +55,8 @@ public partial class MainViewModel : ObservableRecipient
         var prompt = UserInput;
         UserInput = string.Empty;
 
+        IsThinking = true;
+
         var settings = await _localSettingsService.ReadSettingAsync<GeminiSettings>("GeminiSettings");
         if (settings == null)
         {
@@ -60,17 +68,23 @@ public partial class MainViewModel : ObservableRecipient
                 Timestamp = System.DateTime.Now
             };
             ChatMessages.Add(errorMessage);
+            IsThinking = false;
             return;
         }
 
         var response = await _geminiService.GetChatResponseAsync(prompt, settings);
 
+        userMessage.PromptTokenCount = response.PromptTokenCount;
+
         var aiMessage = new ChatMessage
         {
-            Content = response,
+            Content = response.Content,
             Sender = SenderType.AI,
-            Timestamp = System.DateTime.Now
+            Timestamp = System.DateTime.Now,
+            CandidatesTokenCount = response.CandidatesTokenCount
         };
         ChatMessages.Add(aiMessage);
+
+        IsThinking = false;
     }
 }

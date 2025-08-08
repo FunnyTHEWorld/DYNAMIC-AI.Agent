@@ -72,18 +72,81 @@ public partial class MainViewModel : ObservableRecipient
             return;
         }
 
-        var response = await _geminiService.GetChatResponseAsync(prompt, settings);
-
-        userMessage.PromptTokenCount = response.PromptTokenCount;
-
-        var aiMessage = new ChatMessage
+        if (IsStreamingEnabled)
         {
-            Content = response.Content,
-            Sender = SenderType.AI,
-            Timestamp = System.DateTime.Now,
-            CandidatesTokenCount = response.CandidatesTokenCount
-        };
-        ChatMessages.Add(aiMessage);
+            var aiMessage = new ChatMessage
+            {
+                Sender = SenderType.AI,
+                Timestamp = System.DateTime.Now,
+            };
+            ChatMessages.Add(aiMessage);
+
+            var fullResponse = new StringBuilder();
+            var fullThinkingResponse = new StringBuilder();
+            await foreach (var response in _geminiService.GetChatResponseStreamAsync(prompt, settings))
+            {
+                fullResponse.Append(response.Content);
+                if (response.ThinkingContent != null)
+                {
+                    fullThinkingResponse.Append(response.ThinkingContent);
+                    aiMessage.ThinkingContent = fullThinkingResponse.ToString();
+                }
+                aiMessage.Content = fullResponse.ToString();
+
+                var renderedContent = LatexRenderer.Render(aiMessage.Content);
+                var markdownContent = new StringBuilder();
+                var imageIndex = 0;
+                foreach (var content in renderedContent)
+                {
+                    if (content is TextContent textContent)
+                    {
+                        markdownContent.Append(textContent.Text);
+                    }
+                    else if (content is LatexImageContent)
+                    {
+                        markdownContent.Append($"![latex_{imageIndex++}](latex:{imageIndex})");
+                    }
+                }
+                aiMessage.MarkdownContent = markdownContent.ToString();
+                aiMessage.RenderedContent = renderedContent;
+
+                aiMessage.PromptTokenCount = response.PromptTokenCount;
+                aiMessage.CandidatesTokenCount = response.CandidatesTokenCount;
+            }
+        }
+        else
+        {
+            var response = await _geminiService.GetChatResponseAsync(prompt, settings);
+
+            userMessage.PromptTokenCount = response.PromptTokenCount;
+
+            var renderedContent = LatexRenderer.Render(response.Content);
+            var markdownContent = new StringBuilder();
+            var imageIndex = 0;
+            foreach (var content in renderedContent)
+            {
+                if (content is TextContent textContent)
+                {
+                    markdownContent.Append(textContent.Text);
+                }
+                else if (content is LatexImageContent)
+                {
+                    markdownContent.Append($"![latex_{imageIndex++}](latex:{imageIndex})");
+                }
+            }
+
+            var aiMessage = new ChatMessage
+            {
+                Content = response.Content,
+                MarkdownContent = markdownContent.ToString(),
+                RenderedContent = renderedContent,
+                ThinkingContent = response.ThinkingContent,
+                Sender = SenderType.AI,
+                Timestamp = System.DateTime.Now,
+                CandidatesTokenCount = response.CandidatesTokenCount
+            };
+            ChatMessages.Add(aiMessage);
+        }
 
         IsThinking = false;
     }

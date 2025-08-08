@@ -1,3 +1,5 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace DYNAMIC_AI.Agent.Core.Models;
 
 public enum SenderType
@@ -6,11 +8,35 @@ public enum SenderType
     AI
 }
 
-public class ChatMessage
+using System.Collections.Generic;
+using DYNAMIC_AI.Agent.Helpers;
+
+public partial class ChatMessage : ObservableObject
 {
-    public string? Content { get; set; }
-    public SenderType Sender { get; set; }
-    public DateTime Timestamp { get; set; }
-    public int PromptTokenCount { get; set; }
-    public int CandidatesTokenCount { get; set; }
+    [ObservableProperty]
+    private string? _content;
+
+    [ObservableProperty]
+    private string? _markdownContent;
+
+    [ObservableProperty]
+    private List<RenderedContent> _renderedContent;
+
+    [ObservableProperty]
+    private string? _thinkingContent;
+
+    [ObservableProperty]
+    private SenderType _sender;
+
+    [ObservableProperty]
+    private DateTime _timestamp;
+
+    [ObservableProperty]
+    private int _promptTokenCount;
+
+    [ObservableProperty]
+    private int _candidatesTokenCount;
+
+    [ObservableProperty]
+    private bool _isThinkingExpanded;
 }

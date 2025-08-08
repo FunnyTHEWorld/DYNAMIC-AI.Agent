@@ -19,6 +19,10 @@ public partial class ChatMessageViewModel : ObservableObject
     public DateTime Timestamp => _message.Timestamp;
     public string? AttachmentPath => _message.AttachmentPath;
 
-    [ObservableProperty]
     private BitmapImage? _attachmentThumbnail;
+    public BitmapImage? AttachmentThumbnail
+    {
+        get => _attachmentThumbnail;
+        set => SetProperty(ref _attachmentThumbnail, value);
+    }
 }

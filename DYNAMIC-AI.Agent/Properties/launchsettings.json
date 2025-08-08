@@ -1,0 +1,10 @@
+﻿{
+    "profiles": {
+      "DYNAMIC-AI.Agent (Package)": {
+        "commandName": "MsixPackage"
+      },
+      "DYNAMIC-AI.Agent (Unpackaged)": {
+        "commandName": "Project"
+      }
+    }
+}
